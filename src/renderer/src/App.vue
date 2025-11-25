@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { ref, Ref } from 'vue';
-import { actionLogs, LogInfo } from './store/ActionLogs';
+import { ref, Ref } from 'vue'
+import { actionLogs, LogInfo } from './store/ActionLogs'
 import * as XLSX from 'xlsx'
 
 interface NCMInfo {
-  Codigo: string;
-  Descricao: string;
-  DataInicio: string;
-  DataFim: string;
-  TipoAto: string;
-  NumeroAto: string;
-  AnoAto: string;
+  Codigo: string
+  Descricao: string
+  DataInicio: string
+  DataFim: string
+  TipoAto: string
+  NumeroAto: string
+  AnoAto: string
 }
 
 interface ProductInfo {
-  id: number;
-  ncm: string;
-  descricao: string;
-  descricao_ncm?: string;
-  ncm_original?: string;
-  ncm_atualizado: boolean;
-  ncm_valido: boolean;
+  id: number
+  ncm: string
+  descricao: string
+  descricao_ncm?: string
+  ncm_original?: string
+  ncm_atualizado: boolean
+  ncm_valido: boolean
 }
 
 const NCMS: Ref<NCMInfo[]> = ref([])
@@ -41,11 +41,11 @@ async function UpdateTable() {
     canChangeAction.value = false
 
     const ncms: NCMInfo[] = await (window.api as any).fetchNcm()
-    const parsedNcms: NCMInfo[] = ncms.map(ncm => {
+    const parsedNcms: NCMInfo[] = ncms.map((ncm) => {
       const ncmParts = ncm.Codigo.split('.')
       let ncmCode = ''
-      ncmParts.forEach(part => ncmCode+=part)
-      
+      ncmParts.forEach((part) => (ncmCode += part))
+
       return {
         Codigo: ncmCode,
         Descricao: ncm.Descricao,
@@ -58,7 +58,10 @@ async function UpdateTable() {
     })
     //console.log(parsedNcms)
 
-    const newLogs = actionLogs.createLog(`Tabela NCM's atualizada. [${ncms.length}] encontrados.`, 'success')
+    const newLogs = actionLogs.createLog(
+      `Tabela NCM's atualizada. [${ncms.length}] encontrados.`,
+      'success'
+    )
     logs.value = [...newLogs]
     //console.log(logs.value)
 
@@ -75,24 +78,31 @@ function OpenFile() {
 }
 function UpdateFile(e) {
   let file = e.target.files[0]
-  if (!file) return;
+  if (!file) return
 
   fileName.value = file.name
   const reader = new FileReader()
 
   reader.onload = (evt) => {
     try {
-      const bstr = evt.target?.result;
+      const bstr = evt.target?.result
       const wb = XLSX.read(bstr, { type: 'binary' })
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
+      const wsname = wb.SheetNames[0]
+      const ws = wb.Sheets[wsname]
       const data = XLSX.utils.sheet_to_json(ws)
       //console.log(data)
 
       const products: ProductInfo[] = data.map((prod: any, i: number) => ({
         id: i + 1,
         ncm: String(prod.ncm || prod.NCM || '-').replace(/\D/g, ''),
-        descricao: prod.nome || prod.descricao || prod.produto || prod['Descrição'] || prod.Produto || prod.Nome || '-',
+        descricao:
+          prod.nome ||
+          prod.descricao ||
+          prod.produto ||
+          prod['Descrição'] ||
+          prod.Produto ||
+          prod.Nome ||
+          '-',
         descricao_ncm: '-',
         ncm_valido: false,
         ncm_atualizado: false
@@ -101,12 +111,16 @@ function UpdateFile(e) {
       //console.log(products)
       productsVerified.value = [...products]
 
-      logs.value = [...actionLogs.createLog(`Sucesso ao ler planilha: ${products.length} Produtos carregados`, 'success')]
+      logs.value = [
+        ...actionLogs.createLog(
+          `Sucesso ao ler planilha: ${products.length} Produtos carregados`,
+          'success'
+        )
+      ]
 
       if (NCMS.value.length >= 1) {
         VerifyNcms(products)
       }
-
     } catch (error) {
       //console.log(error)
       logs.value = [...actionLogs.createLog('Erro ao ler planilha', 'error')]
@@ -117,35 +131,37 @@ function UpdateFile(e) {
 }
 
 function VerifyNcms(products: ProductInfo[]) {
-  const produtosVerificados = products.map(produto => {
-
+  const produtosVerificados = products.map((produto) => {
     //NCMS.value.forEach(ncm => console.log(`${ncm.Codigo} == ${produto.ncm}`))
-    const ncmEncontrado = NCMS.value.find(ncm => ncm.Codigo == produto.ncm);
+    const ncmEncontrado = NCMS.value.find((ncm) => ncm.Codigo == produto.ncm)
     //console.log(ncmEncontrado)
     return {
       ...produto,
       ncm_valido: !!ncmEncontrado,
       descricao_ncm: ncmEncontrado ? ncmEncontrado.Descricao : 'NCM não encontrado'
-    };
+    }
   })
 
   productsVerified.value = [...produtosVerificados]
   //console.log(productsVerified)
-};
+}
 
 function FindSimilarNcm(currentNcm: string, product: ProductInfo): NCMInfo | null {
-  if (!currentNcm || currentNcm.length < 4) return null;
+  if (!currentNcm || currentNcm.length < 4) return null
 
   const prefix = currentNcm.substring(0, 4)
-  const keywords = product.descricao.toLowerCase().split(' ').filter(p => p.length > 3)
+  const keywords = product.descricao
+    .toLowerCase()
+    .split(' ')
+    .filter((p) => p.length > 3)
 
-  let bestMatch: NCMInfo | null = null;
-  let bestScore = 0;
+  let bestMatch: NCMInfo | null = null
+  let bestScore = 0
 
-  const candidates: NCMInfo[] = NCMS.value.filter(ncm => ncm.Codigo.startsWith(prefix))
+  const candidates: NCMInfo[] = NCMS.value.filter((ncm) => ncm.Codigo.startsWith(prefix))
 
   for (const ncm of candidates) {
-    let score = 0;
+    let score = 0
     const descNcm = ncm.Descricao.toLowerCase()
 
     for (const word of keywords) {
@@ -168,16 +184,16 @@ function FindSimilarNcm(currentNcm: string, product: ProductInfo): NCMInfo | nul
 }
 
 function UpdateNcms(products: ProductInfo[]) {
-  if (currentAction.value == 'update.productncm' || canChangeAction.value == false) return;
+  if (currentAction.value == 'update.productncm' || canChangeAction.value == false) return
 
   currentAction.value = 'update.productncm'
   canChangeAction.value = false
 
   //console.log('AAA')
-  let updated = 0;
-  let notFound = 0;
+  let updated = 0
+  let notFound = 0
 
-  const updatedProducts: ProductInfo[] = products.map(prod => {
+  const updatedProducts: ProductInfo[] = products.map((prod) => {
     if (!prod.ncm_valido) {
       const oldncm = prod.ncm
       const suggestedNcm = FindSimilarNcm(oldncm, prod)
@@ -202,7 +218,12 @@ function UpdateNcms(products: ProductInfo[]) {
   })
   //console.log(updated)
 
-  logs.value = [...actionLogs.createLog(`Atualização concluida: ${updated} NCM's Atualizados | ${notFound} NCM's precisam ser atualizados manualmente`, 'success')]
+  logs.value = [
+    ...actionLogs.createLog(
+      `Atualização concluida: ${updated} NCM's Atualizados | ${notFound} NCM's precisam ser atualizados manualmente`,
+      'success'
+    )
+  ]
 
   productsVerified.value = [...updatedProducts]
 
@@ -210,22 +231,24 @@ function UpdateNcms(products: ProductInfo[]) {
   canChangeAction.value = true
 }
 
-const UpdatePage = (e) => currentPage.value = e.currentTarget.value
+const UpdatePage = (e) => (currentPage.value = e.currentTarget.value)
 
-function ExportTable(products: ProductInfo[]){
-  if (products.length == 0 ){
+function ExportTable(products: ProductInfo[]) {
+  if (products.length == 0) {
     logs.value = [...actionLogs.createLog('Nenhum produto para ser exportado', 'error')]
     return
   }
 
-  const ws = XLSX.utils.json_to_sheet(products.map(p => ({
-    Prduto: p.descricao || '-',
-    NCM: p.ncm,
-    'NCM Original': p.ncm_original || '-',
-    'NCM Atualizado?': p.ncm_atualizado ? 'Sim' : 'Não',
-    'NCM Válido?': p.ncm_valido ? 'Sim' : 'Não',
-    'Descrição NCM': p.descricao_ncm || '-',
-  })))
+  const ws = XLSX.utils.json_to_sheet(
+    products.map((p) => ({
+      Prduto: p.descricao || '-',
+      NCM: p.ncm,
+      'NCM Original': p.ncm_original || '-',
+      'NCM Atualizado?': p.ncm_atualizado ? 'Sim' : 'Não',
+      'NCM Válido?': p.ncm_valido ? 'Sim' : 'Não',
+      'Descrição NCM': p.descricao_ncm || '-'
+    }))
+  )
 
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Produtos')
@@ -234,11 +257,9 @@ function ExportTable(products: ProductInfo[]){
   XLSX.writeFile(wb, nomeArquivo)
   logs.value = [...actionLogs.createLog('Planilha gerada com sucesso.', 'success')]
 }
-
 </script>
 
 <template>
-
   <header class="transparent-background row-container">
     <div class="row-container info">
       <span class="material-symbols-outlined">database</span>
@@ -261,17 +282,29 @@ function ExportTable(products: ProductInfo[]){
         <input id="file-input" @change="UpdateFile" accept=".xlsx" type="file" hidden />
       </button>
 
-      <button v-if="productsVerified.length > 0" @click="VerifyNcms(productsVerified)" class="row-container orange">
+      <button
+        v-if="productsVerified.length > 0"
+        @click="VerifyNcms(productsVerified)"
+        class="row-container orange"
+      >
         <span class="material-symbols-outlined">sync</span>
         <p>Validar NCM's</p>
       </button>
 
-      <button v-if="productsVerified.length > 0" @click="UpdateNcms(productsVerified)" class="row-container orange">
+      <button
+        v-if="productsVerified.length > 0"
+        @click="UpdateNcms(productsVerified)"
+        class="row-container orange"
+      >
         <span class="material-symbols-outlined">sync</span>
         <p>Atualizar NCM's</p>
       </button>
 
-      <button v-if="productsVerified.length > 0" @click="ExportTable(productsVerified)" class="row-container green">
+      <button
+        v-if="productsVerified.length > 0"
+        @click="ExportTable(productsVerified)"
+        class="row-container green"
+      >
         <span class="material-symbols-outlined">download</span>
         <p>Exportar Tabela</p>
       </button>
@@ -279,7 +312,6 @@ function ExportTable(products: ProductInfo[]){
   </header>
 
   <aside v-if="productsVerified.length > 0" class="row-container products-info">
-
     <div class="column-container transparent-background info-card">
       <p>Total de produtos</p>
       <h1>{{ productsVerified.length }}</h1>
@@ -287,30 +319,34 @@ function ExportTable(products: ProductInfo[]){
 
     <div class="column-container transparent-background info-card">
       <p>NCM's Válidos</p>
-      <h1>{{productsVerified.filter(prod => prod.ncm_valido == true).length}}</h1>
+      <h1>{{ productsVerified.filter((prod) => prod.ncm_valido == true).length }}</h1>
     </div>
 
     <div class="column-container transparent-background info-card red">
       <p>NCM's Inválidos</p>
-      <h1>{{productsVerified.filter(prod => prod.ncm_valido != true).length}}</h1>
+      <h1>{{ productsVerified.filter((prod) => prod.ncm_valido != true).length }}</h1>
     </div>
 
     <div class="column-container transparent-background info-card orange">
       <p>NCM's Atualizados</p>
-      <h1>{{ productsVerified.filter(prod => prod.ncm_atualizado == true).length }}</h1>
+      <h1>{{ productsVerified.filter((prod) => prod.ncm_atualizado == true).length }}</h1>
     </div>
-
   </aside>
 
   <main class="row-container">
-
-    <div v-if="productsVerified.length == 0" class="transparent-background column-container no-products">
+    <div
+      v-if="productsVerified.length == 0"
+      class="transparent-background column-container no-products"
+    >
       <span class="material-symbols-outlined">docs</span>
       <h3>Nenhuma Planilha carregada</h3>
       <p>Importe uma planilha excel com as colunas: NCM, Descrição</p>
     </div>
 
-    <div v-if="productsVerified.length > 0" class="transparent-background column-container table-holder">
+    <div
+      v-if="productsVerified.length > 0"
+      class="transparent-background column-container table-holder"
+    >
       <table align="left">
         <tr class="header">
           <th>STATUS</th>
@@ -320,25 +356,36 @@ function ExportTable(products: ProductInfo[]){
           <th>AÇÕES</th>
         </tr>
 
-        <tr class="row" :class="product.ncm_valido ? 'valid' : 'invalid'" v-for="product in productsVerified.slice(currentPage*10, (currentPage*10)+10)">
+        <tr
+          class="row"
+          :class="product.ncm_valido ? 'valid' : 'invalid'"
+          v-for="product in productsVerified.slice(currentPage * 10, currentPage * 10 + 10)"
+        >
           <td class="status">
-            <span class="material-symbols-outlined">{{ !product.ncm_valido ? 'error' : 'check_circle' }}</span>
+            <span class="material-symbols-outlined">{{
+              !product.ncm_valido ? 'error' : 'check_circle'
+            }}</span>
           </td>
-          <td style="max-width: 270px;">
+          <td style="max-width: 270px">
             <p>{{ product.descricao }}</p>
           </td>
           <td>
             <p>{{ product.ncm }}</p>
           </td>
-          <td style="max-width: 230px;">
+          <td style="max-width: 230px">
             <p>{{ product.descricao_ncm }}</p>
           </td>
         </tr>
       </table>
 
       <div class="row-container table-nav">
-        <p>Mostrando página {{ currentPage }} de {{ Math.round(productsVerified.length/10) }}</p>
-        <input type="number" @change="UpdatePage" :max="Math.round(productsVerified.length/10)" min="1">
+        <p>Mostrando página {{ currentPage }} de {{ Math.round(productsVerified.length / 10) }}</p>
+        <input
+          type="number"
+          @change="UpdatePage"
+          :max="Math.round(productsVerified.length / 10)"
+          min="1"
+        />
       </div>
     </div>
 
@@ -348,15 +395,21 @@ function ExportTable(products: ProductInfo[]){
       </div>
       <div class="column-container holder">
         <div class="column-container log" :class="log.type" v-for="log in logs">
-          <p>{{ `${String(log.timestamp.getHours()).padStart(2, '0')}:${String(log.timestamp.getMinutes()).padStart(2,
-            '0')}:${String(log.timestamp.getSeconds()).padStart(2, '0')} : ${log.type}` }}</p>
+          <p>
+            {{
+              `${String(log.timestamp.getHours()).padStart(2, '0')}:${String(
+                log.timestamp.getMinutes()
+              ).padStart(
+                2,
+                '0'
+              )}:${String(log.timestamp.getSeconds()).padStart(2, '0')} : ${log.type}`
+            }}
+          </p>
           <h4>{{ log.message }}</h4>
         </div>
       </div>
     </div>
-
   </main>
-
 </template>
 
 <style lang="scss">
@@ -367,7 +420,7 @@ function ExportTable(products: ProductInfo[]){
 }
 
 * {
-  font-family: "Lato", sans-serif;
+  font-family: 'Lato', sans-serif;
 
   margin: 0;
   padding: 0;
@@ -423,7 +476,7 @@ header {
     }
 
     p {
-      font-size: .9rem;
+      font-size: 0.9rem;
       color: rgb(27, 196, 103);
     }
   }
@@ -434,7 +487,7 @@ header {
 
     button {
       cursor: pointer;
-      transition: all .3s ease;
+      transition: all 0.3s ease;
 
       align-items: center;
       gap: 10px;
@@ -477,7 +530,7 @@ header {
       }
 
       &:active {
-        transform: scale(.99, .99);
+        transform: scale(0.99, 0.99);
       }
     }
   }
@@ -490,13 +543,13 @@ header {
   margin-top: 20px;
 
   .info-card {
-    transition: all .25s ease;
+    transition: all 0.25s ease;
     flex: 1;
     gap: 15px;
     padding: 20px 20px;
 
     p {
-      opacity: .8;
+      opacity: 0.8;
     }
 
     &.red {
@@ -515,7 +568,6 @@ header {
       transform: translateY(-3px);
     }
   }
-
 }
 
 main {
@@ -536,7 +588,7 @@ main {
   }
 
   p {
-    opacity: .8;
+    opacity: 0.8;
   }
 }
 
@@ -562,7 +614,7 @@ main {
   }
 
   .log {
-    transition: all .25s ease;
+    transition: all 0.25s ease;
     user-select: none;
     gap: 10px;
     padding: 20px;
@@ -571,12 +623,12 @@ main {
     background-color: rgba(255, 255, 255, 0.068);
 
     p {
-      opacity: .7;
-      font-size: .9rem;
+      opacity: 0.7;
+      font-size: 0.9rem;
     }
 
     h4 {
-      font-size: .9rem;
+      font-size: 0.9rem;
       font-weight: 500;
     }
 
@@ -610,7 +662,7 @@ main {
       max-height: 50px;
       text-overflow: ellipsis;
 
-      p{
+      p {
         max-height: 50px;
         text-wrap: wrap;
         text-overflow: ellipsis;
@@ -624,7 +676,7 @@ main {
         th {
           text-align: left;
           padding: 10px;
-          font-size: .8rem;
+          font-size: 0.8rem;
           color: rgba(255, 255, 255, 0.8);
         }
       }
@@ -652,14 +704,14 @@ main {
     }
   }
 
-  .table-nav{
+  .table-nav {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 
     align-items: center;
     gap: 10px;
     padding: 10px;
 
-    input{
+    input {
       padding: 5px;
       border-radius: 5px;
       border: 0;

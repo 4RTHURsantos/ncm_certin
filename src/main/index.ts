@@ -19,7 +19,7 @@ function createWindow(): void {
     }
   })
 
-  if (is.dev){
+  if (is.dev) {
     mainWindow.webContents.openDevTools()
   }
 
@@ -57,7 +57,9 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
-  ipcMain.handle('fetchNcm', async () => {return ncmManager.getNcms()})
+  ipcMain.handle('fetchNcm', async () => {
+    return ncmManager.getNcms()
+  })
 
   createWindow()
 
